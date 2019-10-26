@@ -1,7 +1,7 @@
 import React from 'react';
 
-// import { Container } from './styles';
+import { Container } from './styles';
 
 export default function Main() {
-  return <div>Main</div>;
+  return <Container>Main</Container>;
 }
