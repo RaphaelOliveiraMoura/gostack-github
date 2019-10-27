@@ -15,7 +15,7 @@ function Repository({ match }) {
   const [filter, setFilter] = useState('all');
 
   const [page, setPage] = useState(1);
-  const [hasNext, setHasNext] = useState(false);
+  const [lastPage, setLastPage] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -30,7 +30,7 @@ function Repository({ match }) {
       return api.get(`/repos/${repositoryName}/issues`, {
         params: {
           state: filter,
-          per_page: 6,
+          per_page: 5,
           page,
         },
       });
@@ -40,22 +40,23 @@ function Repository({ match }) {
       response => {
         const [repositoryResponse, issuesResponse] = response;
 
-        const hasNextIssuePage =
-          issuesResponse.data.slice(0, issuesResponse.data.length - 1)
-            .length === 5;
-
-        if (hasNextIssuePage) issuesResponse.data.pop();
+        const lastIssuePage = issuesResponse.headers.link
+          .split(',')[1]
+          .split('>')[0]
+          .split('=')
+          .pop();
 
         setRepository(repositoryResponse.data);
         setIssues(issuesResponse.data);
         setLoading(false);
-        setHasNext(hasNextIssuePage);
+        setLastPage(lastIssuePage);
       }
     );
   }, [match.params.repository, filter, page]);
 
   async function handleFilter(event) {
     setLoading(true);
+    setPage(1);
     setFilter(event.target.value);
   }
 
@@ -90,7 +91,7 @@ function Repository({ match }) {
             </div>
           </li>
         ))}
-        <Pagination hasBefore={page > 1} hasNext={hasNext}>
+        <Pagination hasBefore={page > 1} hasNext={page < lastPage}>
           <FaAngleLeft
             size="1.4em"
             onClick={() => page > 1 && setPage(Number(page) - 1)}
@@ -98,7 +99,7 @@ function Repository({ match }) {
           <span>{page}</span>
           <FaAngleRight
             size="1.4em"
-            onClick={() => hasNext && setPage(Number(page) + 1)}
+            onClick={() => page < lastPage && setPage(Number(page) + 1)}
           />
         </Pagination>
       </IssueList>
