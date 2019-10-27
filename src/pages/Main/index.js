@@ -11,6 +11,7 @@ export default function Main() {
   const [newRepo, setNewRepo] = useState('');
   const [repositories, setRepositories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [invalidRepo, setInvalidRepo] = useState(false);
 
   useEffect(() => {
     const repos = JSON.parse(localStorage.getItem('repositories'));
@@ -23,18 +24,26 @@ export default function Main() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     setLoading(true);
 
-    const response = await api.get(`repos/${newRepo}`);
+    try {
+      if (repositories.map(repository => repository.name).includes(newRepo))
+        throw new Error('Repositório duplicado');
 
-    const data = {
-      name: response.data.full_name,
-    };
+      const response = await api.get(`repos/${newRepo}`);
 
-    setNewRepo('');
-    setRepositories([...repositories, data]);
-    setLoading(false);
+      const data = {
+        name: response.data.full_name,
+      };
+
+      setNewRepo('');
+      setRepositories([...repositories, data]);
+      setInvalidRepo(false);
+    } catch (error) {
+      setInvalidRepo(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -44,7 +53,7 @@ export default function Main() {
         Repositórios
       </h1>
 
-      <Form onSubmit={handleSubmit}>
+      <Form onSubmit={handleSubmit} invalid={invalidRepo}>
         <input
           type="text"
           placeholder="Adicionar repositório"

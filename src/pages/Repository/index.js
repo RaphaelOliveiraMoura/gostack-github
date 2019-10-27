@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
+import { FaAngleLeft, FaAngleRight } from 'react-icons/fa';
 
 import api from '../../services/api';
 
 import Container from '../../components/Container';
-import { Loading, Owner, IssueList } from './styles';
+import { Loading, Owner, IssueList, Pagination } from './styles';
 
 function Repository({ match }) {
   const [repository, setRepository] = useState({});
   const [issues, setIssues] = useState({});
   const [loading, setLoading] = useState({});
+  const [filter, setFilter] = useState('all');
+
+  const [page, setPage] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -24,8 +29,9 @@ function Repository({ match }) {
     async function getRepositoryIssues() {
       return api.get(`/repos/${repositoryName}/issues`, {
         params: {
-          state: 'open',
-          per_page: 5,
+          state: filter,
+          per_page: 6,
+          page,
         },
       });
     }
@@ -34,12 +40,24 @@ function Repository({ match }) {
       response => {
         const [repositoryResponse, issuesResponse] = response;
 
+        const hasNextIssuePage =
+          issuesResponse.data.slice(0, issuesResponse.data.length - 1)
+            .length === 5;
+
+        if (hasNextIssuePage) issuesResponse.data.pop();
+
         setRepository(repositoryResponse.data);
         setIssues(issuesResponse.data);
         setLoading(false);
+        setHasNext(hasNextIssuePage);
       }
     );
-  }, [match.params.repository]);
+  }, [match.params.repository, filter, page]);
+
+  async function handleFilter(event) {
+    setLoading(true);
+    setFilter(event.target.value);
+  }
 
   return loading ? (
     <Loading>Carregando</Loading>
@@ -53,6 +71,11 @@ function Repository({ match }) {
       </Owner>
 
       <IssueList>
+        <select onChange={handleFilter} value={filter}>
+          <option value="all">Todas</option>
+          <option value="open">Abertas</option>
+          <option value="closed">Fechadas</option>
+        </select>
         {issues.map(issue => (
           <li key={String(issue.id)}>
             <img src={issue.user.avatar_url} alt={issue.user.login} />
@@ -67,6 +90,17 @@ function Repository({ match }) {
             </div>
           </li>
         ))}
+        <Pagination hasBefore={page > 1} hasNext={hasNext}>
+          <FaAngleLeft
+            size="1.4em"
+            onClick={() => page > 1 && setPage(Number(page) - 1)}
+          />
+          <span>{page}</span>
+          <FaAngleRight
+            size="1.4em"
+            onClick={() => hasNext && setPage(Number(page) + 1)}
+          />
+        </Pagination>
       </IssueList>
     </Container>
   );
