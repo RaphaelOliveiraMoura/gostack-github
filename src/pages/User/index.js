@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
+import {TouchableHighlight} from 'react-native';
 import PropTypes from 'prop-types';
-import {RefreshControl} from 'react-native';
 
 import {
   Container,
@@ -25,6 +25,7 @@ export default class User extends Component {
   // eslint-disable-next-line react/static-property-placement
   static propTypes = {
     navigation: PropTypes.shape({
+      navigate: PropTypes.func,
       getParam: PropTypes.func,
     }).isRequired,
   };
@@ -33,6 +34,7 @@ export default class User extends Component {
     stars: [],
     page: 1,
     loading: false,
+    refreshing: false,
   };
 
   async componentDidMount() {
@@ -67,9 +69,26 @@ export default class User extends Component {
     });
   };
 
+  refreshList = async () => {
+    const {navigation} = this.props;
+    const user = navigation.getParam('user');
+
+    this.setState({loading: true});
+
+    const response = await api.get(`/users/${user.login}/starred`, {
+      params: {page: 1},
+    });
+
+    this.setState({
+      stars: response.data,
+      page: 1,
+      loading: false,
+    });
+  };
+
   render() {
     const {navigation} = this.props;
-    const {stars, loading} = this.state;
+    const {stars, loading, refreshing} = this.state;
 
     const user = navigation.getParam('user');
 
@@ -83,17 +102,23 @@ export default class User extends Component {
 
         <Stars
           data={stars}
-          keyStractor={star => String(star.id)}
+          keyExtractor={star => String(star.id)}
           renderItem={({item}) => (
-            <Starred>
-              <OwnerAvatar source={{uri: item.owner.avatar_url}} />
-              <Info>
-                <Title>{item.name}</Title>
-                <Author>{item.owner.login}</Author>
-              </Info>
-            </Starred>
+            <TouchableHighlight
+              onPress={() =>
+                navigation.navigate('WebViewPage', {repository: item})
+              }>
+              <Starred>
+                <OwnerAvatar source={{uri: item.owner.avatar_url}} />
+                <Info>
+                  <Title>{item.name}</Title>
+                  <Author>{item.owner.login}</Author>
+                </Info>
+              </Starred>
+            </TouchableHighlight>
           )}
-          refreshControl={<RefreshControl refreshing={loading} />}
+          refreshing={loading || refreshing}
+          onRefresh={this.refreshList}
           onEndReachedThreshold={0.2}
           onEndReached={this.loadMore}
         />
